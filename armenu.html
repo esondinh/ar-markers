@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>VUA LẨU ẾCH - AR MENU</title>
+    
+    <!-- A-Frame và AR.js -->
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+    
+    <!-- Font Awesome cho icon đẹp -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        /* KHÔNG GIAN ORDER NỔI TRÊN AR */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        /* Lớp phủ giao diện đặt món (UI 2D) */
+        .ar-overlay {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+            color: white;
+            padding: 20px;
+            padding-top: 60px;
+            z-index: 9999;
+            pointer-events: none;
+        }
+        
+        .menu-card {
+            background: white;
+            border-radius: 25px 25px 0 0;
+            padding: 20px;
+            color: #333;
+            box-shadow: 0 -5px 30px rgba(0,0,0,0.3);
+            pointer-events: auto;
+            transform: translateY(100%);
+            animation: slideUp 0.5s ease-out forwards;
+        }
+        
+        @keyframes slideUp {
+            to { transform: translateY(0); }
+        }
+        
+        .resto-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 15px;
+        }
+        
+        .resto-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #e74c3c;
+        }
+        
+        .cart-icon {
+            position: relative;
+            font-size: 28px;
+            color: #2c3e50;
+            cursor: pointer;
+        }
+        
+        .cart-count {
+            position: absolute;
+            top: -5px;
+            right: -10px;
+            background: #e74c3c;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        
+        .item-detail {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .item-image {
+            width: 100px;
+            height: 100px;
+            background: #f5f5f5;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+        }
+        
+        .item-info {
+            flex: 1;
+        }
+        
+        .item-name {
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #2c3e50;
+        }
+        
+        .item-price {
+            font-size: 24px;
+            font-weight: bold;
+            color: #e74c3c;
+            margin-bottom: 10px;
+        }
+        
+        .size-selector {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .size-btn {
+            padding: 8px 15px;
+            border: 2px solid #ddd;
+            border-radius: 25px;
+            background: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .size-btn.active {
+            background: #e74c3c;
+            color: white;
+            border-color: #e74c3c;
+        }
+        
+        .add-to-cart {
+            width: 100%;
+            padding: 18px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 15px;
+            font-size: 20px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.2s;
+        }
+        
+        .add-to-cart:hover {
+            background: #c0392b;
+        }
+        
+        .cart-panel {
+            position: fixed;
+            top: 0;
+            right: -100%;
+            width: 90%;
+            max-width: 400px;
+            height: 100vh;
+            background: white;
+            box-shadow: -5px 0 30px rgba(0,0,0,0.3);
+            transition: right 0.3s;
+            z-index: 10000;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .cart-panel.active {
+            right: 0;
+        }
+        
+        .cart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .cart-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .close-cart {
+            font-size: 30px;
+            cursor: pointer;
+            color: #999;
+        }
+        
+        .cart-items {
+            margin-bottom: 20px;
+        }
+        
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .cart-item-name {
+            font-weight: bold;
+            flex: 2;
+        }
+        
+        .cart-item-price {
+            color: #e74c3c;
+            font-weight: bold;
+            flex: 1;
+            text-align: right;
+        }
+        
+        .cart-item-remove {
+            color: #999;
+            cursor: pointer;
+            margin-left: 10px;
+            font-size: 18px;
+        }
+        
+        .cart-total {
+            font-size: 22px;
+            font-weight: bold;
+            text-align: right;
+            margin: 20px 0;
+            padding-top: 15px;
+            border-top: 3px solid #f0f0f0;
+        }
+        
+        .checkout-btn {
+            width: 100%;
+            padding: 18px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 15px;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        /* Marker instruction */
+        .ar-instruction {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 14px;
+            z-index: 9998;
+            backdrop-filter: blur(5px);
+            white-space: nowrap;
+        }
+        
+        /* Loading */
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 15px;
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid #fff;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading indicator -->
+    <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <span>Đang khởi tạo camera...</span>
+    </div>
+    
+    <!-- Instruction overlay -->
+    <div id="instruction" class="ar-instruction">
+        <i class="fas fa-camera"></i> Hướng camera vào hình vẽ con ếch trên bàn
+    </div>
+    
+    <!-- AR SCENE -->
+    <a-scene 
+        id="arScene"
+        embedded 
+        arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+        vr-mode-ui="enabled: false"
+        renderer="colorManagement: true;"
+        autoplay
+        arjs-loaded="true">
+        
+        <!-- Camera -->
+        <a-entity camera></a-entity>
+        
+        <!-- MARKER 1: Hình vẽ con ếch (pattern marker) -->
+        <a-marker 
+            id="marker-ech" 
+            type="pattern" 
+            url="https://raw.githubusercontent.com/esondinh/ar-markers/refs/heads/main/pattern-3d.patt"
+            patternRatio="0.85"
+            registerevents>
+            
+            <!-- Chú ếch 3D (dùng hình khối tạm thời, bạn thay bằng model .gltf sau) -->
+            <a-entity position="0 0.5 0" scale="0.5 0.5 0.5">
+                <!-- Thân ếch -->
+                <a-sphere color="#2ecc71" radius="0.3" position="0 0 0"></a-sphere>
+                <!-- Mắt -->
+                <a-sphere color="white" radius="0.1" position="-0.15 0.25 0.25"></a-sphere>
+                <a-sphere color="white" radius="0.1" position="0.15 0.25 0.25"></a-sphere>
+                <a-sphere color="black" radius="0.05" position="-0.15 0.3 0.35"></a-sphere>
+                <a-sphere color="black" radius="0.05" position="0.15 0.3 0.35"></a-sphere>
+                <!-- Miệng cười -->
+                <a-torus arc="180" radius="0.15" radius-tubular="0.02" rotation="0 0 180" position="0 -0.1 0.35" color="#e67e22"></a-torus>
+            </a-entity>
+            
+            <!-- Hiệu ứng xoay cho chú ếch -->
+            <a-animation attribute="rotation" dur="5000" fill="forwards" to="0 360 0" easing="linear" repeat="indefinite"></a-animation>
+            
+            <!-- Bóng đổ -->
+            <a-circle color="#333" radius="0.4" rotation="-90 0 0" position="0 -0.1 0" opacity="0.3"></a-circle>
+        </a-marker>
+        
+        <!-- MARKER 2: Có thể thêm marker cho món khác -->
+        <a-marker 
+            id="marker-lau" 
+            type="pattern" 
+            url="https://raw.githubusercontent.com/AR-js-org/AR.js/master/aframe/examples/image-training/examples/kanji.patt"
+            patternRatio="0.85"
+            registerevents>
+            
+            <!-- Nồi lẩu 3D đơn giản -->
+            <a-entity position="0 0.3 0" scale="0.4 0.4 0.4">
+                <!-- Nồi -->
+                <a-cylinder color="#95a5a6" radius="0.4" height="0.2" position="0 0 0"></a-cylinder>
+                <!-- Nước lẩu sôi -->
+                <a-torus radius="0.3" radius-tubular="0.02" color="#e67e22" position="0 0.2 0"></a-torus>
+                <!-- Khói -->
+                <a-entity position="0 0.4 0">
+                    <a-sphere color="#ecf0f1" radius="0.1" opacity="0.6"></a-sphere>
+                    <a-animation attribute="position" dur="2000" fill="forwards" to="0 0.8 0" easing="linear" repeat="indefinite"></a-animation>
+                    <a-animation attribute="scale" dur="2000" fill="forwards" to="2 2 2" easing="linear" repeat="indefinite"></a-animation>
+                </a-entity>
+            </a-entity>
+        </a-marker>
+        
+        <!-- Marker cho background tracking (giữ UI ổn định) -->
+        <a-marker-camera preset="hiro"></a-marker-camera>
+    </a-scene>
+    
+    <!-- UI OVERLAY: Giao diện đặt món hiện ra khi quét marker -->
+    <div id="arOverlay" class="ar-overlay hidden">
+        <div id="menuCard" class="menu-card">
+            <div class="resto-header">
+                <div class="resto-name">🐸 VUA LẨU ẾCH</div>
+                <div class="cart-icon" onclick="toggleCart()">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span id="cartCount" class="cart-count">0</span>
+                </div>
+            </div>
+            
+            <div id="itemContent">
+                <!-- Nội dung sẽ được cập nhật bằng JavaScript -->
+                <div class="item-detail">
+                    <div class="item-image">
+                        <i class="fas fa-frog" style="font-size: 50px; color: #2ecc71;"></i>
+                    </div>
+                    <div class="item-info">
+                        <div class="item-name" id="itemName">ẾCH CHIÊN MẮM</div>
+                        <div class="item-price" id="itemPrice">200.000đ</div>
+                    </div>
+                </div>
+                
+                <!-- Size selector (nếu có) -->
+                <div id="sizeSelector" class="size-selector">
+                    <button class="size-btn active" onclick="selectSize('lon')">Lớn</button>
+                    <button class="size-btn" onclick="selectSize('vua')">Vừa</button>
+                    <button class="size-btn" onclick="selectSize('nho')">Nhỏ</button>
+                </div>
+                
+                <!-- Mô tả món -->
+                <p id="itemDescription" style="color: #666; margin: 15px 0;">
+                    Ếch đồng tươi, chiên giòn, sốt mắm đặc biệt của nhà hàng
+                </p>
+                
+                <!-- Nút thêm vào giỏ -->
+                <button id="addToCartBtn" class="add-to-cart" onclick="addToCart()">
+                    <i class="fas fa-cart-plus"></i> THÊM VÀO GIỎ
+                </button>
+            </div>
+            
+            <!-- Thông báo -->
+            <div id="successMessage" style="display: none; color: #27ae60; text-align: center; margin-top: 15px; font-weight: bold;">
+                <i class="fas fa-check-circle"></i> Đã thêm vào giỏ hàng!
+            </div>
+        </div>
+    </div>
+    
+    <!-- GIỎ HÀNG PANEL (trượt từ phải sang) -->
+    <div id="cartPanel" class="cart-panel">
+        <div class="cart-header">
+            <div class="cart-title">🛒 Giỏ hàng</div>
+            <div class="close-cart" onclick="toggleCart()"><i class="fas fa-times"></i></div>
+        </div>
+        
+        <div id="cartItemsList" class="cart-items">
+            <!-- Giỏ hàng sẽ được hiển thị ở đây -->
+            <div style="text-align: center; color: #999; padding: 30px;">
+                <i class="fas fa-shopping-cart" style="font-size: 50px; margin-bottom: 15px;"></i>
+                <p>Giỏ hàng đang trống</p>
+            </div>
+        </div>
+        
+        <div class="cart-total" id="cartTotal">
+            Tổng: 0đ
+        </div>
+        
+        <button class="checkout-btn" onclick="checkout()">
+            <i class="fas fa-check"></i> ĐẶT MÓN NGAY
+        </button>
+    </div>
+    
+    <script>
+        // ==================== DỮ LIỆU MENU ====================
+        const menuData = {
+            'marker-ech': {
+                id: 'ech-chien-mam',
+                name: 'ẾCH CHIÊN MẮM',
+                basePrice: 200000,
+                sizes: {
+                    'nho': { price: 145000, name: 'Nhỏ' },
+                    'vua': { price: 180000, name: 'Vừa' },
+                    'lon': { price: 200000, name: 'Lớn' }
+                },
+                description: 'Ếch đồng tươi, chiên giòn, sốt mắm đặc biệt của nhà hàng',
+                image: '🐸'
+            },
+            'marker-lau': {
+                id: 'lau-ech-mang-cay',
+                name: 'LẨU ẾCH MĂNG CAY',
+                basePrice: 250000,
+                sizes: {
+                    'nho': { price: 250000, name: '2 người' },
+                    'vua': { price: 350000, name: '3-4 người' },
+                    'lon': { price: 450000, name: '5-6 người' }
+                },
+                description: 'Nồi lẩu thơm lừng, nước dùng đậm đà, măng cay giòn ngọt',
+                image: '🍲'
+            }
+        };
+        
+        // ==================== BIẾN TOÀN CỤC ====================
+        let currentMarker = 'marker-ech';  // Marker đang được quét
+        let selectedSize = 'lon';          // Size mặc định
+        let cart = [];                      // Giỏ hàng
+        let currentItem = null;              // Item đang xem
+        
+        // ==================== KHỞI TẠO ====================
+        window.onload = function() {
+            // Ẩn loading sau 2 giây
+            setTimeout(() => {
+                document.getElementById('loading').style.display = 'none';
+            }, 2000);
+            
+            // Load giỏ hàng từ localStorage (nếu có)
+            const savedCart = localStorage.getItem('cart');
+            if (savedCart) {
+                cart = JSON.parse(savedCart);
+                updateCartDisplay();
+            }
+            
+            // Lắng nghe sự kiện marker từ AR.js
+            setupAREvents();
+        };
+        
+        // ==================== XỬ LÝ AR EVENTS ====================
+        function setupAREvents() {
+            // Khi phát hiện marker 1
+            const markerEch = document.getElementById('marker-ech');
+            if (markerEch) {
+                markerEch.addEventListener('markerFound', () => {
+                    console.log('Đã thấy marker ẾCH!');
+                    currentMarker = 'marker-ech';
+                    showMenuForMarker('marker-ech');
+                });
+                
+                markerEch.addEventListener('markerLost', () => {
+                    console.log('Mất marker');
+                    // Không ẩn menu ngay, giữ lại cho dễ dùng
+                });
+            }
+            
+            // Marker 2
+            const markerLau = document.getElementById('marker-lau');
+            if (markerLau) {
+                markerLau.addEventListener('markerFound', () => {
+                    console.log('Đã thấy marker LẨU!');
+                    currentMarker = 'marker-lau';
+                    showMenuForMarker('marker-lau');
+                });
+            }
+        }
+        
+        // ==================== HIỂN THỊ MENU THEO MARKER ====================
+        function showMenuForMarker(markerId) {
+            const item = menuData[markerId];
+            if (!item) return;
+            
+            currentItem = item;
+            
+            // Cập nhật giao diện
+            document.getElementById('itemName').innerText = item.name;
+            document.getElementById('itemPrice').innerText = formatPrice(item.basePrice);
+            document.getElementById('itemDescription').innerText = item.description;
+            
+            // Cập nhật size selector
+            const sizeSelector = document.getElementById('sizeSelector');
+            if (item.sizes) {
+                sizeSelector.innerHTML = '';
+                for (const [sizeKey, sizeData] of Object.entries(item.sizes)) {
+                    const btn = document.createElement('button');
+                    btn.className = `size-btn ${sizeKey === 'lon' ? 'active' : ''}`;
+                    btn.innerText = sizeData.name;
+                    btn.onclick = () => selectSize(sizeKey);
+                    sizeSelector.appendChild(btn);
+                }
+                sizeSelector.style.display = 'flex';
+            } else {
+                sizeSelector.style.display = 'none';
+            }
+            
+            // Hiện overlay
+            document.getElementById('arOverlay').classList.remove('hidden');
+            
+            // Cập nhật instruction
+            document.getElementById('instruction').innerHTML = '<i class="fas fa-check-circle"></i> Đã nhận diện! Vuốt lên để đặt món';
+        }
+        
+        // ==================== CHỌN SIZE ====================
+        function selectSize(size) {
+            selectedSize = size;
+            
+            // Cập nhật UI active
+            document.querySelectorAll('.size-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Cập nhật giá hiển thị
+            if (currentItem && currentItem.sizes && currentItem.sizes[size]) {
+                document.getElementById('itemPrice').innerText = formatPrice(currentItem.sizes[size].price);
+            }
+        }
+        
+        // ==================== THÊM VÀO GIỎ ====================
+        function addToCart() {
+            if (!currentItem) return;
+            
+            // Tính giá theo size
+            let price = currentItem.basePrice;
+            let sizeName = 'Lớn';
+            
+            if (currentItem.sizes && currentItem.sizes[selectedSize]) {
+                price = currentItem.sizes[selectedSize].price;
+                sizeName = currentItem.sizes[selectedSize].name;
+            }
+            
+            // Tạo item
+            const cartItem = {
+                id: currentItem.id + '-' + selectedSize + '-' + Date.now(),
+                name: currentItem.name,
+                size: sizeName,
+                price: price,
+                quantity: 1
+            };
+            
+            // Thêm vào giỏ
+            cart.push(cartItem);
+            
+            // Lưu localStorage
+            localStorage.setItem('cart', JSON.stringify(cart));
+            
+            // Cập nhật UI
+            updateCartDisplay();
+            
+            // Hiện thông báo
+            const msg = document.getElementById('successMessage');
+            msg.style.display = 'block';
+            msg.innerHTML = '<i class="fas fa-check-circle"></i> Đã thêm ' + currentItem.name + ' vào giỏ hàng!';
+            
+            setTimeout(() => {
+                msg.style.display = 'none';
+            }, 2000);
+            
+            // Animation nút
+            const btn = document.getElementById('addToCartBtn');
+            btn.style.background = '#27ae60';
+            btn.innerHTML = '<i class="fas fa-check"></i> ĐÃ THÊM!';
+            
+            setTimeout(() => {
+                btn.style.background = '#e74c3c';
+                btn.innerHTML = '<i class="fas fa-cart-plus"></i> THÊM VÀO GIỎ';
+            }, 1000);
+        }
+        
+        // ==================== CẬP NHẬT GIỎ HÀNG ====================
+        function updateCartDisplay() {
+            // Cập nhật số lượng trên icon
+            document.getElementById('cartCount').innerText = cart.length;
+            
+            // Cập nhật danh sách trong panel
+            const cartList = document.getElementById('cartItemsList');
+            const cartTotalSpan = document.getElementById('cartTotal');
+            
+            if (cart.length === 0) {
+                cartList.innerHTML = '<div style="text-align: center; color: #999; padding: 30px;"><i class="fas fa-shopping-cart" style="font-size: 50px; margin-bottom: 15px;"></i><p>Giỏ hàng đang trống</p></div>';
+                cartTotalSpan.innerText = 'Tổng: 0đ';
+                return;
+            }
+            
+            let html = '';
+            let total = 0;
+            
+            cart.forEach((item, index) => {
+                total += item.price;
+                html += `
+                    <div class="cart-item">
+                        <div class="cart-item-name">
+                            ${item.name}<br>
+                            <small style="color: #999; font-size: 12px;">${item.size || ''}</small>
+                        </div>
+                        <div class="cart-item-price">${formatPrice(item.price)}</div>
+                        <div class="cart-item-remove" onclick="removeFromCart(${index})">
+                            <i class="fas fa-trash-alt"></i>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            cartList.innerHTML = html;
+            cartTotalSpan.innerText = `Tổng: ${formatPrice(total)}`;
+        }
+        
+        // ==================== XÓA KHỎI GIỎ ====================
+        function removeFromCart(index) {
+            cart.splice(index, 1);
+            localStorage.setItem('cart', JSON.stringify(cart));
+            updateCartDisplay();
+        }
+        
+        // ==================== ĐẶT MÓN ====================
+        function checkout() {
+            if (cart.length === 0) {
+                alert('Giỏ hàng trống!');
+                return;
+            }
+            
+            // Tính tổng tiền
+            const total = cart.reduce((sum, item) => sum + item.price, 0);
+            
+            // Chuẩn bị nội dung để gửi Zalo/Email
+            let orderSummary = '🛒 *ĐƠN HÀNG MỚI*\n\n';
+            cart.forEach(item => {
+                orderSummary += `- ${item.name} (${item.size || ''}): ${formatPrice(item.price)}\n`;
+            });
+            orderSummary += `\n💰 *Tổng: ${formatPrice(total)}*`;
+            
+            // Mở Zalo để gửi tin nhắn
+            const zaloUrl = `https://zalo.me/84961966658?text=${encodeURIComponent(orderSummary)}`;
+            
+            // Thông báo cho khách
+            if (confirm(`✅ Xác nhận đặt món!\nTổng: ${formatPrice(total)}\n\nNhấn OK để gửi đơn hàng qua Zalo cho quán.`)) {
+                window.open(zaloUrl, '_blank');
+                
+                // Xóa giỏ hàng sau khi đặt
+                cart = [];
+                localStorage.removeItem('cart');
+                updateCartDisplay();
+                
+                // Đóng cart panel
+                document.getElementById('cartPanel').classList.remove('active');
+                
+                // Thông báo
+                alert('Cảm ơn bạn! Quán sẽ chuẩn bị món ngay. 🐸');
+            }
+        }
+        
+        // ==================== TOGGLE GIỎ HÀNG ====================
+        function toggleCart() {
+            document.getElementById('cartPanel').classList.toggle('active');
+        }
+        
+        // ==================== HELPER: Format giá tiền ====================
+        function formatPrice(price) {
+            return new Intl.NumberFormat('vi-VN').format(price) + 'đ';
+        }
+        
+        // ==================== ĐÓNG MENU KHI BẤM RA NGOÀI ====================
+        document.addEventListener('click', function(event) {
+            const menuCard = document.getElementById('menuCard');
+            const cartPanel = document.getElementById('cartPanel');
+            
+            if (!menuCard.contains(event.target) && !cartPanel.contains(event.target) && !event.target.closest('.cart-icon')) {
+                // Có thể đóng menu nếu muốn
+            }
+        });
+    </script>
+</body>
+</html>
